@@ -376,8 +376,10 @@ const callLocal = async (messages) => {
 
 /**
  * 将聊天历史转换为 API 消息格式
+ * @param {Array} chatHistory - 聊天历史数组
+ * @param {number} maxHistoryLength - 最大历史长度（默认保留最近30条消息，避免token超限）
  */
-const formatMessages = (chatHistory) => {
+const formatMessages = (chatHistory, maxHistoryLength = 30) => {
   const messages = []
   
   // 添加系统提示（可选）
@@ -386,13 +388,24 @@ const formatMessages = (chatHistory) => {
     content: 'You are a helpful AI assistant. Respond in a clear and concise manner.'
   })
 
+  // 限制历史长度：只保留最近的消息（保留最近的对话上下文）
+  // 这样可以避免token超限，同时保持对话的连贯性
+  const recentHistory = chatHistory.length > maxHistoryLength 
+    ? chatHistory.slice(-maxHistoryLength)
+    : chatHistory
+
   // 转换聊天历史
-  chatHistory.forEach(msg => {
+  recentHistory.forEach(msg => {
     messages.push({
       role: msg.type === 'user' ? 'user' : 'assistant',
       content: msg.text
     })
   })
+
+  // 如果历史被截断，记录日志
+  if (chatHistory.length > maxHistoryLength) {
+    console.log(`📝 历史消息已截断：保留最近 ${maxHistoryLength} 条消息（总共 ${chatHistory.length} 条）`)
+  }
 
   return messages
 }
