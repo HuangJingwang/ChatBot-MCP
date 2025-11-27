@@ -114,6 +114,26 @@
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
 import { callAI, checkConfig } from '../services/aiService'
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github-dark.css'
+
+// 初始化 Markdown 渲染器
+const md = new MarkdownIt({
+  html: true, // 允许 HTML 标签
+  linkify: true, // 自动识别链接
+  typographer: true, // 启用一些语言中性的替换 + 引号美化
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return '<pre class="hljs"><code>' +
+               hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
+               '</code></pre>'
+      } catch (__) {}
+    }
+    return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>'
+  }
+})
 
 const messages = ref([])
 const inputMessage = ref('')
@@ -130,8 +150,9 @@ const suggestions = [
 ]
 
 const formatMessage = (text) => {
-  // 简单的格式化：将换行符转换为 <br>
-  return text.replace(/\n/g, '<br>')
+  if (!text) return ''
+  // 使用 Markdown 渲染器
+  return md.render(text)
 }
 
 const scrollToBottom = () => {
@@ -405,8 +426,110 @@ onMounted(() => {
   font-size: 16px;
   line-height: 1.75;
   color: #374151;
-  white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+/* Markdown 样式 */
+.message-text :deep(h1),
+.message-text :deep(h2),
+.message-text :deep(h3),
+.message-text :deep(h4),
+.message-text :deep(h5),
+.message-text :deep(h6) {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.message-text :deep(h1) { font-size: 1.5em; }
+.message-text :deep(h2) { font-size: 1.3em; }
+.message-text :deep(h3) { font-size: 1.1em; }
+
+.message-text :deep(p) {
+  margin: 0.5em 0;
+}
+
+.message-text :deep(ul),
+.message-text :deep(ol) {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.message-text :deep(li) {
+  margin: 0.25em 0;
+}
+
+.message-text :deep(blockquote) {
+  margin: 0.5em 0;
+  padding-left: 1em;
+  border-left: 3px solid #d1d5db;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.message-text :deep(code) {
+  background: #f3f4f6;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  color: #e11d48;
+}
+
+.message-text :deep(pre) {
+  background: #1e293b;
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.message-text :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: #e2e8f0;
+  font-size: 0.9em;
+}
+
+.message-text :deep(a) {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.message-text :deep(a:hover) {
+  color: #2563eb;
+}
+
+.message-text :deep(table) {
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  width: 100%;
+}
+
+.message-text :deep(th),
+.message-text :deep(td) {
+  border: 1px solid #e5e7eb;
+  padding: 0.5em;
+  text-align: left;
+}
+
+.message-text :deep(th) {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+.message-text :deep(hr) {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1em 0;
+}
+
+.message-text :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0.5em 0;
 }
 
 .message-wrapper.user .message-text {
