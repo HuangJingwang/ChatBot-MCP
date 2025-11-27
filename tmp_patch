@@ -1,0 +1,10 @@
+*** Begin Patch
+*** Update File: src/services/aiService.js
+@@
+ const getAvailableTools = async (config) => {
+   try {
++    console.warn('MCP start - 即将检查 MCP 配置')
+     // 检查是否启用了 MCP 工具（使用正确的环境变量名）
+     const enableMCPTools = import.meta.env.VITE_ENABLE_MCP_TOOLS === 'true'
+@@
+*** End Patch
