@@ -20,6 +20,20 @@ export default defineConfig({
             }
           })
         }
+      },
+      '/api': {
+        target: 'http://localhost:3399',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        configure: (proxy, options) => {
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // 确保转发所有必要的请求头
+            const cookieId = req.headers.cookieid || req.headers.cookieId
+            if (cookieId) {
+              proxyReq.setHeader('cookieId', cookieId)
+            }
+          })
+        }
       }
     }
   }

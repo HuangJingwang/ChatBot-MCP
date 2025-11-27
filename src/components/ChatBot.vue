@@ -22,9 +22,18 @@
         </div>
       </div>
 
-      <!-- 清除历史按钮 - 只在有消息时显示 -->
-      <div v-if="messages.length > 0" class="clear-history-container">
-        <button @click="showClearConfirm = true" class="clear-history-button" title="清除对话历史">
+      <!-- 顶部操作按钮 -->
+      <div class="top-actions-container">
+        <!-- 退出登录按钮 -->
+        <button @click="handleLogout" class="logout-button" title="退出登录">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" fill="currentColor"/>
+          </svg>
+          <span>退出登录</span>
+        </button>
+        
+        <!-- 清除历史按钮 - 只在有消息时显示 -->
+        <button v-if="messages.length > 0" @click="showClearConfirm = true" class="clear-history-button" title="清除对话历史">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
           </svg>
@@ -251,6 +260,8 @@ import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github-dark.css'
 
+const emit = defineEmits(['logout'])
+
 // 初始化 Markdown 渲染器
 const md = new MarkdownIt({
   html: true, // 允许 HTML 标签
@@ -455,6 +466,11 @@ const handleClearConfirm = async () => {
   scrollToBottom()
 }
 
+// 处理退出登录
+const handleLogout = () => {
+  emit('logout')
+}
+
 // 监听消息变化，自动保存
 watch(messages, async (newMessages) => {
   // 只有在消息数量大于0时才保存（避免初始化时清空）
@@ -600,14 +616,52 @@ onMounted(async () => {
   transform: translateY(-1px);
 }
 
-/* 清除历史按钮 */
-.clear-history-container {
+/* 顶部操作按钮容器 */
+.top-actions-container {
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 100;
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
+/* 退出登录按钮 */
+.logout-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-family: inherit;
+}
+
+.logout-button:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.15);
+}
+
+.logout-button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.logout-button span {
+  white-space: nowrap;
+}
+
+/* 清除历史按钮 */
 .clear-history-button {
   display: flex;
   align-items: center;
@@ -621,6 +675,7 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-family: inherit;
 }
 
 .clear-history-button:hover {
@@ -1320,6 +1375,24 @@ onMounted(async () => {
 
   .empty-title {
     font-size: 24px;
+  }
+
+  .top-actions-container {
+    top: 10px;
+    right: 10px;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .logout-button,
+  .clear-history-button {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+
+  .logout-button span,
+  .clear-history-button span {
+    display: none;
   }
 }
 </style>

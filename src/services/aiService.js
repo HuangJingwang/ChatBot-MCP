@@ -3,6 +3,7 @@
  */
 import { chatWithMCP, smartMCPCall, getMCPTools } from './mcpService.js'
 import { getMCPToolsList, callMCPTool, formatToolsForAI, checkMCPConnection } from './mcpToolService.js'
+import { getUserInfo, getCurrentOrganize } from './authService.js'
 
 // 支持的 AI 提供商类型
 export const AI_PROVIDERS = {
@@ -382,10 +383,76 @@ const callLocal = async (messages) => {
 const formatMessages = (chatHistory, maxHistoryLength = 30) => {
   const messages = []
   
-  // 添加系统提示（可选）
+  // 获取用户信息
+  const userInfo = getUserInfo()
+  const currentOrganize = getCurrentOrganize()
+  
+  // 构建系统提示，包含用户上下文信息
+  let systemContent = 'You are a helpful AI assistant. Respond in a clear and concise manner.'
+  
+  if (userInfo) {
+    const userContext = []
+    
+    // 添加用户基本信息
+    if (userInfo.name || userInfo.userName) {
+      userContext.push(`当前用户姓名：${userInfo.name || userInfo.userName}`)
+    }
+    if (userInfo.mobile) {
+      userContext.push(`用户手机号：${userInfo.mobile}`)
+    }
+    
+    // 添加组织信息
+    if (currentOrganize) {
+      if (currentOrganize.orgName) {
+        userContext.push(`所属组织：${currentOrganize.orgName}`)
+      }
+      if (currentOrganize.deptName) {
+        userContext.push(`所属部门：${currentOrganize.deptName}`)
+      }
+      if (currentOrganize.companyId) {
+        userContext.push(`公司ID：${currentOrganize.companyId}`)
+      }
+    } else if (userInfo.companyName) {
+      userContext.push(`所属公司：${userInfo.companyName}`)
+    }
+    
+    if (userInfo.deptName) {
+      userContext.push(`部门：${userInfo.deptName}`)
+    }
+    
+    // 添加角色和权限信息
+    if (userInfo.roles && userInfo.roles.length > 0) {
+      userContext.push(`用户角色：${userInfo.roles.join(', ')}`)
+    }
+    
+    if (userContext.length > 0) {
+      systemContent += `\n\n用户上下文信息：\n${userContext.join('\n')}\n\n请记住这些信息，在对话中可以根据需要使用这些信息来提供更个性化的服务。`
+      
+      // 添加工具调用时的用户信息格式说明
+      if (currentOrganize) {
+        systemContent += `\n\n当调用工具时，如果需要提供用户信息（如 moderator 对象），请使用以下格式：\n` +
+          `{\n` +
+          `  "id": "${currentOrganize.userId || userInfo.userId || userInfo.id}",\n` +
+          `  "name": "${currentOrganize.userName || userInfo.name || userInfo.userName}",\n` +
+          `  "isUser": true,\n` +
+          `  "user": true,\n` +
+          `  "userId": "${currentOrganize.userId || userInfo.userId || userInfo.id}",\n` +
+          `  "userName": "${currentOrganize.userName || userInfo.name || userInfo.userName}",\n` +
+          `  "orgId": "${currentOrganize.orgId || userInfo.orgId || ''}",\n` +
+          `  "orgName": "${currentOrganize.orgName || userInfo.orgName || ''}",\n` +
+          `  "deptId": "${currentOrganize.deptId || userInfo.deptId || ''}",\n` +
+          `  "deptName": "${currentOrganize.deptName || userInfo.deptName || ''}",\n` +
+          `  "companyId": "${currentOrganize.companyId || userInfo.companyId || ''}"\n` +
+          `}\n\n` +
+          `请严格按照工具描述（schema）中定义的参数结构来构造参数。如果工具需要 userId 字段，请使用：${userInfo.userId || userInfo.id || ''}`
+      }
+    }
+  }
+  
+  // 添加系统提示
   messages.push({
     role: 'system',
-    content: 'You are a helpful AI assistant. Respond in a clear and concise manner.'
+    content: systemContent
   })
 
   // 限制历史长度：只保留最近的消息（保留最近的对话上下文）

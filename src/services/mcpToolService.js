@@ -3,6 +3,8 @@
  * 支持 JSON-RPC 2.0 协议
  */
 
+import { getUserInfo, getCurrentOrganize, getCookieId } from './authService.js'
+
 // 从环境变量获取 MCP 配置
 const getMCPConfig = () => {
   return {
@@ -126,20 +128,109 @@ export const getMCPToolsList = async (forceRefresh = false) => {
 }
 
 /**
+ * 根据工具 schema 动态注入用户信息
+ * 这个方法会根据服务端返回的 schema 结构，自动在需要的位置注入用户信息
+ */
+const enrichArgumentsWithUserInfo = async (toolName, arguments_) => {
+  try {
+    // 获取工具 schema
+    const toolInfo = await getToolInfo(toolName)
+    if (!toolInfo || !toolInfo.inputSchema) {
+      // 如果没有 schema，直接返回原参数
+      return arguments_
+    }
+    
+    const schema = toolInfo.inputSchema
+    const userInfo = getUserInfo()
+    const currentOrganize = getCurrentOrganize()
+    
+    if (!userInfo) {
+      // 如果没有用户信息，直接返回原参数
+      return arguments_
+    }
+    
+    // 构建用户信息对象（供注入使用）
+    const userContext = {
+      userId: userInfo.userId || userInfo.id || '',
+      moderator: currentOrganize ? {
+        id: currentOrganize.userId || userInfo.userId || userInfo.id || '',
+        name: currentOrganize.userName || userInfo.name || userInfo.userName || '',
+        isUser: true,
+        user: true,
+        userId: currentOrganize.userId || userInfo.userId || userInfo.id || '',
+        userName: currentOrganize.userName || userInfo.name || userInfo.userName || '',
+        orgId: currentOrganize.orgId || userInfo.orgId || '',
+        orgName: currentOrganize.orgName || userInfo.orgName || '',
+        deptId: currentOrganize.deptId || userInfo.deptId || '',
+        deptName: currentOrganize.deptName || userInfo.deptName || '',
+        companyId: currentOrganize.companyId || userInfo.companyId || ''
+      } : {
+        id: userInfo.userId || userInfo.id || '',
+        name: userInfo.name || userInfo.userName || '',
+        isUser: true,
+        user: true,
+        userId: userInfo.userId || userInfo.id || '',
+        userName: userInfo.name || userInfo.userName || '',
+        orgId: userInfo.orgId || '',
+        orgName: userInfo.orgName || '',
+        deptId: userInfo.deptId || '',
+        deptName: userInfo.deptName || '',
+        companyId: userInfo.companyId || ''
+      }
+    }
+    
+    // 深度克隆参数对象
+    const enrichedArgs = JSON.parse(JSON.stringify(arguments_))
+    
+    // 根据 schema 检查并注入用户信息
+    // 如果 schema 中定义了 userId 字段但参数中没有，则注入
+    if (schema.properties?.userId && !enrichedArgs.userId) {
+      enrichedArgs.userId = userContext.userId
+    }
+    
+    // 如果 schema 中定义了 command.moderator 路径，检查并注入
+    if (schema.properties?.command?.properties?.moderator) {
+      if (!enrichedArgs.command) {
+        enrichedArgs.command = {}
+      }
+      if (!enrichedArgs.command.moderator) {
+        enrichedArgs.command.moderator = userContext.moderator
+      } else {
+        // 如果已有 moderator，补充缺失字段
+        enrichedArgs.command.moderator = {
+          ...userContext.moderator,
+          ...enrichedArgs.command.moderator
+        }
+      }
+    }
+    
+    return enrichedArgs
+  } catch (error) {
+    console.warn('注入用户信息失败，使用原参数:', error)
+    return arguments_
+  }
+}
+
+/**
  * 调用 MCP 工具
  */
 export const callMCPTool = async (toolName, arguments_) => {
   try {
     console.log('🔧 调用 MCP 工具:', {
       toolName,
-      arguments: arguments_,
+      originalArguments: arguments_,
       argumentsType: typeof arguments_,
       argumentsKeys: arguments_ ? Object.keys(arguments_) : []
     })
     
+    // 根据服务端 schema 动态注入用户信息
+    const enrichedArguments = await enrichArgumentsWithUserInfo(toolName, arguments_)
+    
+    console.log('🔧 注入用户信息后的参数:', enrichedArguments)
+    
     const result = await sendMCPRequest('tools/call', {
       name: toolName,
-      arguments: arguments_
+      arguments: enrichedArguments
     })
 
     console.log('✅ MCP 工具调用成功:', result)
